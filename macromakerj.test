@@ -1,0 +1,160 @@
+<?php
+/**
+ * @file
+ * SimpleTests for macromakerj module.
+ */
+
+/**
+ * Default test case for the macromakerj module.
+ *
+ * @ingroup macromakerj
+ */
+class MacroBuildOneUnitTestCase extends DrupalWebTestCase {
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function getInfo() {
+        return array(
+            'name' => 'Macro build one unit and UI tests',
+            'description' => 'Various unit tests on the Macro build one module.' ,
+        );
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setUp() {
+        parent::setUp('macromakerj');
+    }
+
+    /**
+     * Test default module installation, two entries in the database table.
+     */
+    public function testInstall() {
+        $result = macromakerj_entry_load();
+        $this->assertEqual(
+            count($result),
+            2,
+            'Found two entries in the table after installing the module.'
+        );
+    }
+
+
+    /**
+     * Test the UI.
+     */
+    public function testUI() {
+        // Test the basic list.
+        $this->drupalGet('examples/dbtng');
+        $this->assertPattern("/John[td\/<>\w]+Doe/", "Text 'John Doe' found in table");
+
+        // Test the add tab.
+        // Add the new entry.
+        $this->drupalPost('macromakerj/add',
+            array(
+                'title'  => 'Biggin Hill',
+                'content' => 'The Biggin Hill Memorial Museum',
+            ),
+            t('Add')
+        );
+        // Now find the new entry.
+        $this->drupalGet('macromakerj');
+        $this->assertPattern("/Biggin[td\/<>\w]+Hill/", "Text 'Biggin Hill' found in table");
+
+        // Try the update tab.
+        // Find out the mid of our "anonymous" macro.
+        $result = macromakerj_entry_load(array('title' => 'Biggin Hill'));
+        $this->drupalGet("macromakerj");
+        $this->assertEqual(
+            count($result),
+            1,
+            'Found one entry in the table with title = "Biggin Hill".'
+        );
+        $entry = $result[0];
+        unset($entry->pid);
+        $entry->title = 'Mozart';
+        $this->drupalPost('macromakerj/update', (array) $entry, t('Update'));
+        // Now find the new entry.
+        $this->drupalGet('macromakerj');
+        $this->assertPattern("/Mozart[td\/<>\w]+Sonata/", "Text 'Mozart Sonata' found in table");
+    }
+
+    /**
+     * Test several combinations, adding entries, updating and deleting.
+     */
+    public function testAPIExamples() {
+        // Create a new entry.
+        $entry = array(
+            'title' => 'Lone macro',
+            'content' => 'To be or not to be, that is the question',
+        );
+        macromakerj_entry_insert($entry);
+
+        // Save another entry.
+        $entry = array(
+            'title' => 'Info macro',
+            'content' => 'Top secret information',
+        );
+        macromakerj_entry_insert($entry);
+
+        // Verify that 4 records are found in the database.
+        $result = macromakerj_entry_load();
+        $this->assertEqual(
+            count($result),
+            4,
+            'Found a total of four entries in the table after creating two additional entries.'
+        );
+
+        $result = macromakerj_entry_load(array('title' => 'Excalibur'));
+        $this->assertEqual(
+            count($result),
+            1,
+            "Found renamed 'Excalibur' surname");
+
+        // Read only John Doe entry.
+        $result = macromakerj_entry_load(array('title' => 'Lone macro', 'content' => 'To be or not to be, that is the question'));
+        $this->assertEqual(
+            count($result),
+            1,
+            'Found one entry for Lone macro.'
+        );
+        // Get the entry.
+        $entry = (array) end($result);
+        // Change content to 'This is the right time.'
+        $entry['content'] = 'This is the right time.';
+        // Update entry in database.
+        macromakerj_entry_update((array) $entry);
+
+        $result = macromakerj_entry_load(array('title' => 'Lone macro'));
+        $this->assertEqual(
+            count($result),
+            1,
+            'Found one entry with title = Lone macro.'
+        );
+
+        // Verify it is Jane NowDoe.
+        $entry = (array) end($result);
+        $this->assertEqual(
+            $entry['name'],
+            'Jane',
+            'The name Jane is found in the entry'
+        );
+        $this->assertEqual(
+            $entry['surname'],
+            'NowDoe',
+            'The surname NowDoe is found in the entry'
+        );
+
+        // Delete the entry.
+        macromakerj_entry_delete($entry);
+
+        // Verify that now there are only 3 records.
+        $result = macromakerj_entry_load();
+        $this->assertEqual(
+            count($result),
+            3,
+            'Found only three records, a record was deleted.'
+        );
+    }
+}

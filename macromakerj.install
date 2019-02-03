@@ -1,0 +1,88 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the macromakerj module.
+ */
+
+/**
+ * Implements hook_install().
+ * Outside of the .install file we would use drupal_write_record() to populate
+ * the database, but it cannot be used here, so we'll use db_insert().
+ *
+ * @see hook_install()
+ *
+ */
+function macromakerj_install()
+{
+    // Add a default entry.
+    $fields = array(
+        'title' => 'Macro one',
+        'content' => 'Flat 6, Portman Square, London W1',
+    );
+    db_insert('macromakerj')
+        ->fields($fields)
+        ->execute();
+
+    // Add another entry.
+    $fields = array(
+        'title' => 'Macro two',
+        'content' => 'A test macro',
+    );
+    db_insert('macromakerj')
+        ->fields($fields)
+        ->execute();
+}
+
+/**
+ * Implements hook_uninstall().
+ *
+ */
+function macromakerj_uninstall()
+{
+    db_drop_table('macromakerj');
+}
+
+
+/**
+ * Implements hook_schema().
+ *
+ * Defines the database tables used by this module.
+ * Remember that the easiest way to create the code for hook_schema is with
+ * the @link http://drupal.org/project/schema schema module @endlink
+ *
+ * @see hook_schema()
+ * @ingroup macromakerj
+ */
+function macromakerj_schema()
+{
+
+    $schema['macromakerj'] = array(
+        'description' => 'Stores macros.',
+        'fields' => array(
+            'mid' => array(
+                'type' => 'serial',
+                'not null' => TRUE,
+                'description' => 'Primary Key: Unique macro ID.',
+            ),
+            'title' => array(
+                'type' => 'varchar',
+                'length' => 255,
+                'not null' => TRUE,
+                'default' => '',
+                'description' => 'Title of the macro.',
+            ),
+            'content' => array(
+                'type' => 'text',
+                'size' => 'medium', // tiny | small | normal | medium | big
+                'not null' => TRUE,
+                'description' => t('stores content for macromakerj table.'),
+            ),
+        ),
+            'primary key' => array('mid'),
+            'indexes' => array(
+                'title' => array('title'),
+            ),
+    );
+
+    return $schema;
+}

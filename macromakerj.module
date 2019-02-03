@@ -1,0 +1,322 @@
+<?php
+/**
+ * @file
+ * This module makes use of the DBTNG
+ * database API in Drupal 7.
+ * General documentation is available at
+ * @link database Database abstraction layer documentation @endlink and
+ * at @link http://drupal.org/node/310069 @endlink.
+ */
+
+function macromakerj_entry_insert($entry) {
+    $return_value = NULL;
+    try {
+        $return_value = db_insert('macromakerj')
+            ->fields($entry)
+            ->execute();
+    }
+    catch (Exception $e) {
+        drupal_set_message(t('Andrew states that the db_insert failed. Message = %message, query= %query',
+            array('%message' => $e->getMessage(), '%query' => $e->query_string)), 'error');
+    }
+    return $return_value;
+}
+
+/**
+ * @param array $entry
+ *   An array containing all the fields of the item to be updated.
+ */
+function macromakerj_entry_update($entry) {
+    try {
+        // db_update()...->execute() returns the number of rows updated.
+        $count = db_update('macromakerj')
+            ->fields($entry)
+            ->condition('mid', $entry['mid'])
+            ->execute();
+    }
+    catch (Exception $e) {
+        drupal_set_message(t('db_update failed. Message = %message, query= %query',
+            array('%message' => $e->getMessage(), '%query' => $e->query_string)), 'error');
+    }
+    return $count;
+}
+
+/**
+ * Delete an entry from the database.
+ *
+ * @param array $entry
+ *   An array containing at least the person identifier 'mid' element of the
+ *   entry to delete.
+ *
+ * @see db_delete()
+ */
+function macromakerj_entry_delete($entry) {
+    db_delete('macromakerj')
+        ->condition('mid', $entry['mid'])
+        ->execute();
+
+}
+
+/**
+ * Read from the database using a filter array.
+ *
+ * Conditions are stacked and evaluated as AND and OR depending on the type of
+ * query. For more information, read the conditional queries handbook page at:
+ * http://drupal.org/node/310086
+ *
+ * @param array $entry
+ *   An array containing all the fields used to search the entries in the table.
+ *
+ * @return object
+ *   An object containing the loaded entries if found.
+ *
+ */
+function macromakerj_entry_load($entry = array()) {
+    // Read all fields from the macromakerj table.
+    $select = db_select('macromakerj', 'm');
+    $select->fields('m', array('title', 'content'));
+
+    // Add each field and value as a condition to this query.
+    foreach ($entry as $field => $value) {
+        $select->condition($field, $value);
+    }
+    // Return the result in object format.
+    return $select->execute()->fetchAll();
+}
+
+function macromakerj_entry_update_load($entry = array()) {
+    // Read all fields from the macromakerj table.
+    $select = db_select('macromakerj', 'm');
+    $select->fields('m', array('mid', 'title', 'content'));
+
+    // Add each field and value as a condition to this query.
+    foreach ($entry as $field => $value) {
+        $select->condition($field, $value);
+    }
+    // Return the result in object format.
+    return $select->execute()->fetchAll();
+}
+
+/**
+ * Implements hook_menu().
+ *
+ * Set up calls to drupal_get_form() for all our cases.
+ */
+function macromakerj_menu() {
+    $items = array();
+
+    $items['admin/settings/macromakerj'] = array(
+        'title' => 'Macros',
+        'page callback' => 'macromakerj_list',
+        'access callback' => TRUE,
+        'access arguments' => array('administer site configuration'),
+    );
+    $items['admin/settings/macromakerj/list'] = array(
+        'title' => 'List',
+        'type' => MENU_DEFAULT_LOCAL_TASK,
+        'weight' => -10,
+        'access arguments' => array('administer site configuration'),
+    );
+    $items['admin/settings/macromakerj/add'] = array(
+        'title' => 'Add entry',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('macromakerj_form_add'),
+        'access callback' => TRUE,
+        'type' => MENU_LOCAL_TASK,
+        'weight' => -9,
+        'access arguments' => array('administer site configuration'),
+    );
+    $items['admin/settings/macromakerj/update'] = array(
+        'title' => 'Update entry',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('macromakerj_form_update'),
+        'type' => MENU_LOCAL_TASK,
+        'access callback' => TRUE,
+        'weight' => -5,
+        'access arguments' => array('administer site configuration'),
+    );
+    return $items;
+}
+
+/**
+ * Implements hook_init().
+ */
+function macromakerj_init()
+{
+    drupal_add_js(array(
+        'macromakerj' => array(
+            'popup' => theme('macromakerj_popup'),
+        )
+    ), 'setting');
+
+    $path = drupal_get_path('module', 'macromakerj');
+    drupal_add_js($path . '/js/jquery.insertAtCaret.js');
+    drupal_add_js($path . '/js/macromakerj.js');
+    drupal_add_css($path . '/css/macromakerj.css');
+}
+
+/**
+ * Render a list of entries in the database.
+ */
+function macromakerj_list() {
+    $output = '';
+
+    // Get all entries in the macromakerj table.
+    if ($entries = macromakerj_entry_load()) {
+        $rows = array();
+        foreach ($entries as $entry) {
+            // Sanitize the data before handing it off to the theme layer.
+            $rows[] = array_map('check_plain', (array) $entry);
+        }
+        // Make a table for them.
+        $header = array(t('Title'), t('Content'));
+        $output .= theme('table', array('header' => $header, 'rows' => $rows));
+    }
+    else {
+        drupal_set_message(t('No entries have been added yet.'));
+    }
+    return $output;
+}
+
+/**
+ * Prepare a simple form to add an entry, with all the interesting fields.
+ */
+function macromakerj_form_add($form, &$form_state) {
+    $form = array();
+
+    $form['add'] = array(
+        '#type'  => 'fieldset',
+        '#title' => t('Add a macro entry'),
+    );
+    $form['add']['mid'] = array(
+        '#type'  => 'hidden',
+        '#title' => t('Macro Id'),
+    );
+    $form['add']['title'] = array(
+        '#type'  => 'textfield',
+        '#title' => t('Title'),
+        '#size'  => 255,
+    );
+    $form['add']['content'] = array(
+        '#type'  => 'textarea',
+        '#title' => t('Macro content'),
+        '#size'  => 1000,
+    );
+    $form['add']['submit'] = array(
+        '#type'  => 'submit',
+        '#value' => t('Add'),
+    );
+
+    return $form;
+}
+
+/**
+ * Submit handler for 'add entry' form.
+ */
+function macromakerj_form_add_submit($form, &$form_state) {
+
+    // Save the submitted entry.
+    $entry = array(
+        'title'    => $form_state['values']['title'],
+        'content' => $form_state['values']['content'],
+    );
+    $return = macromakerj_entry_insert($entry);
+    if ($return) {
+        drupal_set_message(t("Created entry @entry", array('@entry' => print_r($entry, TRUE))));
+    }
+}
+
+/**
+ * Sample UI to update a record.
+ */
+function macromakerj_form_update($form, &$form_state) {
+    $form = array(
+        '#prefix' => '<div id="updateform">',
+        '#suffix' => '</div>',
+    );
+
+    $entries = macromakerj_entry_update_load();
+    $keyed_entries = array();
+    if (empty($entries)) {
+        $form['no_values'] = array(
+            '#value' => t("No entries exist in the table macromakerj table."),
+        );
+        return $form;
+    }
+
+    foreach ($entries as $entry) {
+        $options[$entry->mid] = t("@mid: @title @content",
+            array(
+                '@mid' => $entry->mid,
+                '@title' => $entry->title,
+                '@content' => $entry->content,
+            )
+        );
+        $keyed_entries[$entry->mid] = $entry;
+    }
+    $default_entry = !empty($form_state['values']['mid']) ? $keyed_entries[$form_state['values']['mid']] : $entries[0];
+
+    $form_state['entries'] = $keyed_entries;
+
+    $form['mid'] = array(
+        '#type' => 'select',
+        '#options' => $options,
+        '#title' => t('Choose entry to update'),
+        '#default_value' => $default_entry->mid,
+        '#ajax' => array(
+            'wrapper' => 'updateform',
+            'callback' => 'macromakerj_form_update_callback',
+        ),
+    );
+
+    $form['title'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Updated macro title'),
+        '#size' => 15,
+        '#default_value' => $default_entry->title,
+    );
+
+    $form['content'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Updated macro content'),
+        '#size' => 2000,
+        '#default_value' => $default_entry->content,
+    );
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Update'),
+    );
+    return $form;
+}
+
+/**
+ * AJAX callback handler for the mid select.
+ *
+ * When the mid changes, populates the defaults from the database in the form.
+ */
+function macromakerj_form_update_callback($form, $form_state) {
+    $entry = $form_state['entries'][$form_state['values']['mid']];
+    // Setting the #value of items is the only way I was able to figure out
+    // to get replaced defaults on these items. #default_value will not do it
+    // and shouldn't.
+    foreach (array('title', 'content') as $item) {
+        $form[$item]['#value'] = $entry->$item;
+    }
+    return $form;
+}
+
+/**
+ * Submit handler for 'update entry' form.
+ */
+function macromakerj_form_update_submit($form, &$form_state) {
+
+    // Save the submitted entry.
+    $entry = array(
+        'mid' => $form_state['values']['mid'],
+        'title' => $form_state['values']['title'],
+        'content' => $form_state['values']['content'],
+    );
+    $count = macromakerj_entry_update($entry);
+    drupal_set_message(t("Updated Macro entry @entry (@count row updated)",
+        array('@count' => $count, '@entry' => print_r($entry, TRUE))));
+}

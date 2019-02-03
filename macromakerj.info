@@ -1,0 +1,4 @@
+name = Macromakerj
+description = This is rebuilt version of the Macromaker module
+package = Macromakerj
+core = 7.x
