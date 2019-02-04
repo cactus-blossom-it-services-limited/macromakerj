@@ -1,5 +1,7 @@
-Drupal.behaviors.macromaker = function(context) {
-  var $popup = $(Drupal.settings.macromaker.popup);
+(function ($) {
+    Drupal.behaviors.macromakerj = {
+        attach: function (context, settings) {
+  var $popup = $(Drupal.settings.macromakerj.popup);
   var wrapper = '<div class="macro-wrapper"></div>';
   var lastFocus;
 
@@ -21,12 +23,14 @@ Drupal.behaviors.macromaker = function(context) {
   // Create the click behavior for each macro within the popup.
   $popup.find('a').click(function() {
     // Look up the content based on the 'rel' attribute of the clicked macro link.
-    var txt = Drupal.settings.macromaker.macros[$(this).attr('rel')]['content'];
+    var txt = Drupal.settings.macromakerj.popup[$(this).attr('rel')]['content'];
 
-    // Insert the new content.    
+    // Insert the new content.
     $(lastFocus).insertAtCaret(txt);
 
     // Returning false prevents normal click behavior from happening.
     return false;
   });
 }
+    };
+}(jQuery));

@@ -1,5 +1,4 @@
 /**
- * A little jQuery plugin to insert text at cursor point in a textfield or textarea
  *
  * Usage: $(obj).insertAtCursor(text);
  *   obj = a textarea or textfield
