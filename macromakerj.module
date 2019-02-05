@@ -152,6 +152,7 @@ function macromakerj_init()
 
     drupal_add_js(array(
         'macromakerj' => array(
+            'macros' => $macros,
             'popup' => theme('macromakerj_popup'),
         ),
     ), 'setting');
@@ -176,7 +177,7 @@ function macromakerj_theme($existing, $type, $theme, $path)
             // structure must be described here.
             'variables' => array(
                 'title' => NULL,
-                'items' => NULL,
+                'macros' => NULL,
             ),
         ),
     );
@@ -201,37 +202,26 @@ function macromakerj_permission() {
  * render array is provided to the theme function.
  */
 function theme_macromakerj_popup($variables) {
-    $items = array(
-        t('First item'),
-        t('Second item'),
-        t('Third item'),
-        t('Fourth item'),
-    );
+    $object = macromakerj_entry_update_load(); // This is a stdClass.
+    $macros = json_decode(json_encode($object), True); // This is the object decoded to associative array
+    $items = $macros;
+    //print_r ($items);
 
-    // First we'll create a render array that simply uses theme_item_list.
-    $title = t("A list returned to be rendered using theme('item_list')");
-    $build['render_version'] = array(
+    $output  = '<div class="macro-popup">';
+    $output .= '<div class="macro-title">' . t('macros') . '</div>';
+    $list = '';
+    foreach($items as $mid => $item) {
+        // the "rel" attribute acts as a lookup for the complete string
 
-        // We use #theme here instead of #theme_wrappers because theme_item_list()
-        // is the classic type of theme function that does not just assume a
-        // render array, but instead has its own properties (#type, #title, #items).
-        '#theme' => 'item_list',
-        // '#type' => 'ul',  // The default type is 'ul'
-        // We can easily make sure that a css or js file is present using #attached.
-        '#title' => $title,
-        '#items' => $items,
-    );
-/*
-    // Now we'll create a render array which uses our own list formatter,
-    // theme('theming_example_list').
-    $title = t('Popup');
-    $build['popup'] = array(
+        $list .= '<li><a href="#" rel="' . $mid . '">' . $item['title'] . '</a></li>';
+    }
 
-        '#title' => $title,
-        '#items' => $items,
-    );
-*/
-    return $build;
+    if (strlen($list)) {
+        $output .= "<ul>". $list ."</ul>";
+    }
+
+    $output .= '</div>';
+    return $output;
 }
 
 /**
